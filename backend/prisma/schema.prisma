@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id      Int      @id @default(autoincrement())
+  username     String   @unique @db.VarChar(50)
+  password_hash String  @db.VarChar(255)
+  full_name    String?  @db.VarChar(100)
+  email        String?  @unique @db.VarChar(100)
+  role         Role     @default(staff)
+  created_at   DateTime @default(now())
+
+  refresh_tokens RefreshToken[]
+  orders       Order[]  @relation("CreatedOrders")
+  status_logs  OrderStatusLog[]
+  documents    Document[]
+  payments     Payment[]
+  notifications Notification[]
+}
+
+model RefreshToken {
+  token_id    Int      @id @default(autoincrement())
+
+  token       String   @unique @db.VarChar(500)
+
+  user_id     Int
+
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+
+  revoked     Boolean  @default(false)
+
+  user        User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model Customer {
+  customer_id   Int      @id @default(autoincrement())
+  company_name  String   @db.VarChar(200)
+  contact_person String? @db.VarChar(100)
+  email         String?  @db.VarChar(100)
+  phone         String?  @db.VarChar(20)
+  created_at    DateTime @default(now())
+
+  orders        Order[]
+}
+
+model Order {
+  order_id     Int      @id @default(autoincrement())
+  order_code   String   @unique @db.VarChar(30)
+
+  customer_id  Int
+  created_by   Int?
+
+  service_type ServiceType
+  origin       String   @db.VarChar(100)
+  destination  String   @db.VarChar(100)
+
+  etd          DateTime?
+  eta          DateTime?
+
+  status       OrderStatus
+
+  total_cost   Decimal  @default(0) @db.Decimal(15,2)
+  total_paid   Decimal  @default(0) @db.Decimal(15,2)
+
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  customer     Customer @relation(fields: [customer_id], references: [customer_id])
+  creator      User?    @relation("CreatedOrders", fields: [created_by], references: [user_id])
+
+  status_logs  OrderStatusLog[]
+  documents    Document[]
+  costs        Cost[]
+  payments     Payment[]
+  notifications Notification[]
+}
+
+model OrderStatusLog {
+  log_id     Int      @id @default(autoincrement())
+  order_id   Int
+  old_status OrderStatus?
+  new_status OrderStatus
+  changed_by Int?
+
+  created_at DateTime @default(now())
+
+  order      Order @relation(fields: [order_id], references: [order_id])
+  user       User? @relation(fields: [changed_by], references: [user_id])
+}
+
+model Document {
+  doc_id      Int      @id @default(autoincrement())
+  order_id    Int
+
+  doc_name    String?  @db.VarChar(200)
+  file_url    String?  @db.VarChar(500)
+
+  deadline    DateTime?
+  is_uploaded Boolean  @default(false)
+
+  uploaded_by Int?
+
+  created_at  DateTime @default(now())
+
+  order       Order @relation(fields: [order_id], references: [order_id])
+  user        User? @relation(fields: [uploaded_by], references: [user_id])
+}
+
+model Cost {
+  cost_id    Int      @id @default(autoincrement())
+  order_id   Int
+
+  type       CostType
+  amount     Decimal  @db.Decimal(15,2)
+
+  created_at DateTime @default(now())
+
+  order      Order @relation(fields: [order_id], references: [order_id])
+}
+
+model Payment {
+  payment_id Int      @id @default(autoincrement())
+  order_id   Int
+
+  amount     Decimal  @db.Decimal(15,2)
+  method     PaymentMethod
+
+  created_by Int?
+
+  created_at DateTime @default(now())
+
+  order      Order @relation(fields: [order_id], references: [order_id])
+  user       User? @relation(fields: [created_by], references: [user_id])
+}
+
+model Notification {
+  notif_id   Int      @id @default(autoincrement())
+  user_id    Int?
+  order_id   Int?
+
+  type       NotificationType
+  content    String   @db.Text
+
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user       User?  @relation(fields: [user_id], references: [user_id])
+  order      Order? @relation(fields: [order_id], references: [order_id])
+}
+
+enum Role {
+  admin
+  staff
+  shipper
+}
+
+enum ServiceType {
+  SEA
+  AIR
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  shipping
+  delivered
+  completed
+}
+
+enum CostType {
+  shipping
+  customs
+  warehouse
+  other
+}
+
+enum PaymentMethod {
+  bank
+  cash
+}
+
+enum NotificationType {
+  status
+  payment
+  deadline
+}
