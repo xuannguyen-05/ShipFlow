@@ -107,6 +107,14 @@ const refreshTokenService = async (token) => {
         throw new AppError("Refresh token expired", 401)
     }
 
+    const user = await prisma.user.findUnique({
+        where: { user_id: payload.user_id }
+    })
+
+    if (!user) {
+        throw new AppError("User not found", 404)
+    }
+
     const newAccessToken = jwt.sign(
         { user_id: user.user_id },
         process.env.JWT_SECRET,

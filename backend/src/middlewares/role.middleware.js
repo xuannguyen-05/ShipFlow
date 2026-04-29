@@ -2,23 +2,32 @@ const prisma = require("../config/prisma")
 
 const roleMiddleware = (roles) => {
   return async (req, res, next) => {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { user_id: req.user.user_id }
+      })
 
-    const userRoles = await prisma.user_roles.findMany({
-      where: { userID: req.user.userID },
-      include: { roles: true }
-    })
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found"
+        })
+      }
 
-    const roleNames = userRoles.map(r => r.roles.roleName)
+      const hasRole = roles.includes(user.role)
 
-    const hasRole = roles.some(role => roleNames.includes(role))
+      if (!hasRole) {
+        return res.status(403).json({
+          message: "Forbidden"
+        })
+      }
 
-    if (!hasRole) {
-      return res.status(403).json({
-        message: "Forbidden"
+      next()
+
+    } catch (err) {
+      return res.status(500).json({
+        message: err.message
       })
     }
-
-    next()
   }
 }
 

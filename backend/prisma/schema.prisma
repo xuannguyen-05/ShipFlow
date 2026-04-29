@@ -16,8 +16,12 @@ model User {
   role         Role     @default(staff)
   created_at   DateTime @default(now())
 
+  is_deleted   Boolean   @default(false)
+  deleted_at   DateTime?
+
   refresh_tokens RefreshToken[]
   orders       Order[]  @relation("CreatedOrders")
+  assigned_orders Order[] @relation("AssignedOrders")
   status_logs  OrderStatusLog[]
   documents    Document[]
   payments     Payment[]
@@ -56,6 +60,7 @@ model Order {
 
   customer_id  Int
   created_by   Int?
+  assigned_to Int?
 
   service_type ServiceType
   origin       String   @db.VarChar(100)
@@ -74,6 +79,7 @@ model Order {
 
   customer     Customer @relation(fields: [customer_id], references: [customer_id])
   creator      User?    @relation("CreatedOrders", fields: [created_by], references: [user_id])
+  assignee User? @relation("AssignedOrders", fields: [assigned_to], references: [user_id])
 
   status_logs  OrderStatusLog[]
   documents    Document[]
