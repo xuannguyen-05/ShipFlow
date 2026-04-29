@@ -51,6 +51,9 @@ model Customer {
   phone         String?  @db.VarChar(20)
   created_at    DateTime @default(now())
 
+  is_deleted Boolean @default(false)
+  deleted_at DateTime?
+
   orders        Order[]
 }
 

@@ -89,7 +89,7 @@ const changePasswordService = async(user_id, old_password, new_password) => {
 const getUsersService = async(page, limit) => {
 
     const safePage = Math.max(Number(page) || 1, 1)
-    const safeLimit = Math.max(Number(limit) || 10, 1)
+    const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50)
     const skip = (safePage - 1) * safeLimit
 
     const [users, total] = await Promise.all([
@@ -98,6 +98,9 @@ const getUsersService = async(page, limit) => {
             take: safeLimit,
             where: {
                 is_deleted: false
+            },
+            orderBy: {
+                created_at: "desc"
             },
             select: {
                 user_id: true,
