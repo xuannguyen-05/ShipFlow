@@ -81,6 +81,11 @@ const changePasswordService = async(user_id, old_password, new_password) => {
         }
     })
 
+    await prisma.refreshToken.updateMany({
+        where: { user_id },
+        data: { revoked: true }
+    })
+
     return {
         message: "Password changed successfully"
     }
@@ -132,9 +137,7 @@ const getUsersService = async(page, limit) => {
 const getUserByIdService = async(user_id) => {
 
     if (Number.isNaN(user_id)) {
-        return res.status(400).json({
-            message: "Invalid User ID"
-        })
+        throw new AppError("Invalid User ID", 400)
     }
 
     const user = await prisma.user.findFirst({
@@ -161,9 +164,7 @@ const getUserByIdService = async(user_id) => {
 const updateUserRoleService = async(admin_id, userId, role) => {
 
     if (Number.isNaN(userId)) {
-        return res.status(400).json({
-            message: "Invalid User ID"
-        })
+         throw new AppError("Invalid User ID", 400)
     }
 
     if (admin_id === userId) {
@@ -193,15 +194,18 @@ const updateUserRoleService = async(admin_id, userId, role) => {
         }
     })
 
+    await prisma.refreshToken.updateMany({
+        where: { user_id: userId },
+        data: { revoked: true }
+    })
+
     return updated
 }
 
 const deleteUserService = async(user_id) => {
 
     if (Number.isNaN(user_id)) {
-        return res.status(400).json({
-            message: "Invalid User ID"
-        })
+        throw new AppError("Invalid User ID", 400)
     }
 
     const user = await prisma.user.findUnique({
@@ -223,6 +227,11 @@ const deleteUserService = async(user_id) => {
             is_deleted: true,
             deleted_at: true
         }
+    })
+
+    await prisma.refreshToken.updateMany({
+        where: { user_id },
+        data: { revoked: true }
     })
 
     return deleted

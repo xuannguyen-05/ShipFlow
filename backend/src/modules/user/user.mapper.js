@@ -1,4 +1,4 @@
-const baseUser = (user) => {
+const mapBaseUser = (user) => {
   if (!user) return null
 
   return {
@@ -9,16 +9,17 @@ const baseUser = (user) => {
 }
 
 const toUserSummary = (user) => {
-  return baseUser(user)
+  return mapBaseUser(user)
 }
 
 const toUserDetail = (user) => {
-  if (!user) return null
+  const base = mapBaseUser(user)
+  if (!base) return null
 
   return {
-    ...baseUser(user),
-    full_name: user.full_name,
-    email: user.email
+    ...base,
+    full_name: user.full_name ?? null,
+    email: user.email ?? null
   }
 }
 

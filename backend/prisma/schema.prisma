@@ -47,7 +47,7 @@ model Customer {
   customer_id   Int      @id @default(autoincrement())
   company_name  String   @db.VarChar(200)
   contact_person String? @db.VarChar(100)
-  email         String?  @db.VarChar(100)
+  email         String?  @unique @db.VarChar(100)
   phone         String?  @db.VarChar(20)
   created_at    DateTime @default(now())
 
