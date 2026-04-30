@@ -50,7 +50,10 @@ const loginService = async(data) => {
     }
 
     const accessToken = jwt.sign(
-        { user_id: user.user_id },
+        { 
+            user_id: user.user_id,
+            role: user.role
+        },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN }
     )
