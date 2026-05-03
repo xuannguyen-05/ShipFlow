@@ -1,3 +1,4 @@
+const { Role } = require("@prisma/client")
 const { z } = require("zod")
 
 const updateUserSchema = z.object({
@@ -23,7 +24,7 @@ const changePasswordSchema = z.object({
 )
 
 const roleSchema = z.object({
-  role: z.enum(["admin", "staff", "shipper"])
+  role: z.nativeEnum(Role)
 })
 
 module.exports = {updateUserSchema, changePasswordSchema, roleSchema}

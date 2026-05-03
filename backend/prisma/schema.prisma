@@ -62,7 +62,7 @@ model Order {
   order_code   String   @unique @db.VarChar(30)
 
   customer_id  Int
-  created_by   Int?
+  created_by   Int
   assigned_to Int?
 
   service_type ServiceType
@@ -81,7 +81,7 @@ model Order {
   updated_at   DateTime @updatedAt
 
   customer     Customer @relation(fields: [customer_id], references: [customer_id])
-  creator      User?    @relation("CreatedOrders", fields: [created_by], references: [user_id])
+  creator      User     @relation("CreatedOrders", fields: [created_by], references: [user_id])
   assignee User? @relation("AssignedOrders", fields: [assigned_to], references: [user_id])
 
   status_logs  OrderStatusLog[]
@@ -109,12 +109,16 @@ model Document {
   order_id    Int
 
   doc_name    String?  @db.VarChar(200)
-  file_url    String?  @db.VarChar(500)
+  file_url    String  @db.VarChar(500)
+  public_id   String
 
   deadline    DateTime?
   is_uploaded Boolean  @default(false)
 
   uploaded_by Int?
+
+  is_deleted Boolean @default(false)
+  deleted_at DateTime?
 
   created_at  DateTime @default(now())
 
@@ -181,6 +185,7 @@ enum OrderStatus {
   shipping
   delivered
   completed
+  cancelled   
 }
 
 enum CostType {

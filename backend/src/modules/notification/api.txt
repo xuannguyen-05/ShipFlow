@@ -1,0 +1,5 @@
+✔ GET /notifications
+✔ GET /unread-count
+✔ PATCH /:id/read
+✔ PATCH /read-all
+✔ internal createNotificationService
