@@ -1,0 +1,118 @@
+1. CREATE ORDER
+POST /orders
+
+👉 ai dùng:
+
+admin
+staff
+
+👉 data:
+
+customer_id
+origin
+destination
+service_type
+etd / eta
+🔵 2. GET ALL ORDERS
+GET /orders
+
+👉 có pagination + filter:
+
+status
+customer_id
+assigned_to
+date range
+🔵 3. GET ORDER BY ID
+GET /orders/:id
+
+👉 trả full detail:
+
+customer info
+creator / assignee
+status
+costs
+payments
+documents
+status logs
+🔵 4. UPDATE ORDER INFO
+PATCH /orders/:id
+
+👉 update:
+
+origin
+destination
+service_type
+etd / eta
+
+👉 role:
+
+admin
+staff
+🔵 5. ASSIGN ORDER (giao shipper)
+PATCH /orders/:id/assign
+{
+  "assigned_to": 5
+}
+
+👉 role:
+
+admin
+staff
+🔵 6. CHANGE ORDER STATUS (QUAN TRỌNG)
+PATCH /orders/:id/status
+{
+  "status": "shipping"
+}
+
+👉 rule:
+
+log vào OrderStatusLog
+check transition hợp lệ
+
+👉 role:
+
+admin
+staff
+shipper (giới hạn)
+🔵 7. SHIPPER VIEW ASSIGNED ORDERS
+GET /orders/assigned/me
+
+👉 chỉ shipper thấy đơn của mình
+
+🔵 8. ADD COST
+POST /orders/:id/costs
+{
+  "type": "shipping",
+  "amount": 120000
+}
+🔵 9. GET COSTS
+GET /orders/:id/costs
+🔵 10. ADD PAYMENT
+POST /orders/:id/payments
+{
+  "amount": 500000,
+  "method": "bank"
+}
+🔵 11. GET PAYMENTS
+GET /orders/:id/payments
+🔵 12. UPLOAD DOCUMENT (Cloudinary)
+POST /orders/:id/documents
+
+👉 file upload (invoice, bill,...)
+
+🔵 13. GET DOCUMENTS
+GET /orders/:id/documents
+🔵 14. DELETE ORDER (soft delete nếu cần)
+DELETE /orders/:id
+
+👉 chỉ admin
+
+🔵 15. ORDER HISTORY (STATUS LOG)
+GET /orders/:id/history
+
+👉 trả:
+
+old_status
+new_status
+changed_by
+time

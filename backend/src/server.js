@@ -13,8 +13,6 @@ const hostname = process.env.HOST_NAME;
 app.use(express.json()); // đọc JSON
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/uploads", express.static("public/uploads"))
-
 app.use('/api', routes);
 
 app.use(errorHandler);
