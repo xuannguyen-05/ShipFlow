@@ -201,7 +201,12 @@ enum PaymentMethod {
 }
 
 enum NotificationType {
-  status
-  payment
-  deadline
+  order_created
+  order_assigned
+  order_status_updated
+
+  document_uploaded
+  document_deadline_updated
+
+  payment_added
 }

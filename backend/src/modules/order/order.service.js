@@ -1,11 +1,17 @@
 const prisma = require("../../config/prisma")
 const AppError = require("../../utils/AppError")
 const { randomUUID } = require("crypto")
+const notify = require("../notification/notification.helper")
+const { type } = require("os")
+const { NotificationType } = require("@prisma/client")
+const { OrderStatus } = require("@prisma/client")
+const { Role } = require("@prisma/client")
+
 
 const createOrderService = async(data, user) => {
 
      // shipper không được tạo order
-    if(user.role === "shipper"){
+    if(user.role === Role.shipper){
         throw new AppError("Not allowed", 403)
     }
 
@@ -30,7 +36,7 @@ const createOrderService = async(data, user) => {
             throw new AppError("Assigned user not found", 404)
         }
         
-        if (assignedUser.role !== "shipper"){
+        if (assignedUser.role !== Role.shipper){
             throw new AppError("Can only assign to shipper", 400)
         }
     }
@@ -49,7 +55,7 @@ const createOrderService = async(data, user) => {
             etd: data.etd ?? null,
             eta: data.eta ?? null,
 
-            status: "pending" 
+            status: OrderStatus.pending
         },
         include: {
             customer: true,
@@ -68,6 +74,15 @@ const createOrderService = async(data, user) => {
         }
     })
 
+    await notify({
+        user_id: user.user_id,
+        order_id: order.order_id,
+        type: NotificationType.order_created,
+        data: {
+            order_code: order.order_code
+        }
+    })
+
     return order
 }
 
@@ -76,19 +91,19 @@ const getOrdersService = async(page, limit, user) => {
     let whereCondition = {}
 
      // admin: all
-    if(user.role === "admin"){
+    if(user.role === Role.admin){
         whereCondition = {}
     }
 
     // staff: chỉ order mình tạo hoặc được assign
-    if (user.role === "staff") {
+    if (user.role === Role.staff) {
         whereCondition = {
             created_by: user.user_id 
         }
     }
 
     // shipper: chỉ order được assign
-    if (user.role === "shipper") {
+    if (user.role === Role.shipper) {
         whereCondition = {
             assigned_to: user.user_id
         }
@@ -178,14 +193,14 @@ const getOrderByIdService = async(order_id, user) => {
 
     // shipper chỉ xem order được assign
     if (
-        user.role === "shipper" &&
+        user.role === Role.shipper &&
         order.assigned_to !== user.user_id
     ) {
         throw new AppError("Not allowed", 403)
     }
 
     // staff: chỉ xem order mình tạo
-    if (user.role === "staff" && order.created_by !== user.user_id) {
+    if (user.role === Role.staff && order.created_by !== user.user_id) {
         throw new AppError("Not allowed", 403)
     }
 
@@ -208,24 +223,24 @@ const updateOrderService = async(order_id, data, user) => {
     }
 
     // permission
-    if(user.role === "shipper"){
+    if(user.role === Role.shipper){
         throw new AppError("Not allowed", 403)
     }
 
     if(
-        user.role === "staff" &&
+        user.role === Role.staff &&
         existingOrder.created_by !== user.user_id
     ){
         throw new AppError("Not allowed", 403)
     }
 
-    if (!["pending", "confirmed"].includes(existingOrder.status)) {
+    if (![OrderStatus.pending, OrderStatus.confirmed,].includes(existingOrder.status)) {
         throw new AppError("Cannot update order at this stage", 400)
     }
 
     // check assigned_to (nếu có)
     if(data.assigned_to !== undefined){
-        if (data.assigned_to === null && user.role === "staff") {
+        if (data.assigned_to === null && user.role === Role.staff) {
             throw new AppError("Staff cannot unassign order", 403)
         }else{
             const assignedUser  = await prisma.user.findUnique({
@@ -236,7 +251,7 @@ const updateOrderService = async(order_id, data, user) => {
                 throw new AppError("Assigned user not found", 404)
             }
             
-            if (assignedUser.role !== "shipper"){
+            if (assignedUser.role !== Role.shipper){
                 throw new AppError("Can only assign to shipper", 400)
             }
         }
@@ -283,24 +298,24 @@ const updateAssignOrderService = async(order_id, data, user) => {
     }
 
     // permission
-    if(user.role === "shipper"){
+    if(user.role === Role.shipper){
         throw new AppError("Not allowed", 403)
     }
 
     if(
-        user.role === "staff" &&
+        user.role === Role.staff &&
         existingOrder.created_by !== user.user_id
     ){
         throw new AppError("Not allowed", 403)
     }
 
-    if (!["pending", "confirmed"].includes(existingOrder.status)) {
+    if (![OrderStatus.pending, OrderStatus.confirmed,].includes(existingOrder.status)) {
         throw new AppError("Cannot update order at this stage", 400)
     }
 
     // check assigned_to (nếu có)
     if(data.assigned_to !== undefined){
-        if (data.assigned_to === null && user.role === "staff") {
+        if (data.assigned_to === null && user.role === Role.staff) {
             throw new AppError("Staff cannot unassign order", 403)
         }else{
             const assignedUser  = await prisma.user.findUnique({
@@ -311,7 +326,7 @@ const updateAssignOrderService = async(order_id, data, user) => {
                 throw new AppError("Assigned user not found", 404)
             }
             
-            if (assignedUser.role !== "shipper"){
+            if (assignedUser.role !== Role.shipper){
                 throw new AppError("Can only assign to shipper", 400)
             }
         }
@@ -330,16 +345,36 @@ const updateAssignOrderService = async(order_id, data, user) => {
 const updateOrderStatusService = async(order_id, data, user) => {
 
     const rolePermissions = {
-        admin: ["pending", "confirmed", "shipping", "delivered", "completed", "cancelled"],
-        staff: ["pending", "confirmed", "shipping"],
-        shipper: ["shipping", "delivered"]
+        admin: [
+            OrderStatus.pending, 
+            OrderStatus.confirmed, 
+            OrderStatus.shipping, 
+            OrderStatus.delivered, 
+            OrderStatus.completed, 
+            OrderStatus.cancelled
+        ],
+        staff: [
+            OrderStatus.pending, 
+            OrderStatus.confirmed, 
+            OrderStatus.shipping, 
+        ],
+        shipper: [
+            OrderStatus.shipping, 
+            OrderStatus.delivered, 
+        ]
     }
 
     const validTransitions = {
-        pending: ["confirmed", "cancelled"],
-        confirmed: ["shipping", "cancelled"],
-        shipping: ["delivered"],
-        delivered: ["completed"]
+        pending: [
+            OrderStatus.confirmed, 
+            OrderStatus.cancelled
+        ],
+        confirmed: [
+            OrderStatus.shipping,
+            OrderStatus.cancelled
+        ],
+        shipping: [OrderStatus.delivered],
+        delivered: [OrderStatus.completed]
     }
 
     if (Number.isNaN(order_id)) {
@@ -358,7 +393,7 @@ const updateOrderStatusService = async(order_id, data, user) => {
     const currentStatus = existingOrder.status
     const newStatus = data.status
 
-    if(["completed", "cancelled"].includes(currentStatus)){
+    if([OrderStatus.completed, OrderStatus.cancelled].includes(currentStatus)){
         throw new AppError("Order already finalized", 400)
     }
 
@@ -369,13 +404,13 @@ const updateOrderStatusService = async(order_id, data, user) => {
 
     //check ownership
 
-    if(user.role === "shipper") {
+    if(user.role === Role.shipper) {
         if(existingOrder.assigned_to !== user.user_id){
             throw new AppError("Not allowed", 403)
         }
     }
 
-    if(user.role === "staff"){
+    if(user.role === Role.staff){
         if(existingOrder.created_by !== user.user_id){
             throw new AppError("Not allowed", 403)
         }
