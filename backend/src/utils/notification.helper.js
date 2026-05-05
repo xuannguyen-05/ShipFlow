@@ -8,6 +8,12 @@ const generateNotificationContent = (type, data = {}) => {
     case NotificationType.order_assigned:
       return `You have been assigned to order ${data.order_code}`
 
+    case NotificationType.order_reassigned:
+      return `You have been reassigned to order ${data.order_code}`
+
+    case NotificationType.order_unassigned:
+      return `You have been removed from order ${data.order_code}`
+
     case NotificationType.order_status_updated:
       return `Order ${data.order_code} updated to ${data.status}`
 
@@ -19,6 +25,7 @@ const generateNotificationContent = (type, data = {}) => {
 
     case NotificationType.payment_added:
       return `Payment of ${data.amount} added to order ${data.order_code}`
+
 
     default:
       return "You have a new notification"

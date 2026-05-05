@@ -203,6 +203,8 @@ enum PaymentMethod {
 enum NotificationType {
   order_created
   order_assigned
+  order_reassigned
+  order_unassigned   
   order_status_updated
 
   document_uploaded

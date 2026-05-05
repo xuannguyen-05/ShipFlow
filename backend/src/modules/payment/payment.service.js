@@ -1,5 +1,8 @@
 const prisma = require("../../config/prisma")
 const AppError = require("../../utils/AppError")
+const { OrderStatus } = require("@prisma/client")
+const { notify } = require("../notification/notification.helper")
+const { NotificationType } = require("@prisma/client")
 
 const addPaymentService = async(order_id, data, user) => {
     if (Number.isNaN(order_id)) {
@@ -15,7 +18,7 @@ const addPaymentService = async(order_id, data, user) => {
         throw new AppError("Order not found", 404)
     }
 
-    if (["completed", "cancelled"].includes(existingOrder.status)) {
+    if ([OrderStatus.completed, OrderStatus.cancelled].includes(existingOrder.status)) {
         throw new AppError("Cannot add payment to finalized order", 400)
     }
 
@@ -42,6 +45,16 @@ const addPaymentService = async(order_id, data, user) => {
             }
         })
     ])
+
+    await notify({
+        user_id: existingOrder.created_by,
+        order_id,
+        type: NotificationType.payment_added,
+        data: {
+            order_code: existingOrder.order_code,
+            amount: data.amount
+        }
+    })
 
     return payment
 }

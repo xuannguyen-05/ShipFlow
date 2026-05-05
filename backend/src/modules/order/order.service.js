@@ -1,7 +1,7 @@
 const prisma = require("../../config/prisma")
 const AppError = require("../../utils/AppError")
 const { randomUUID } = require("crypto")
-const notify = require("../notification/notification.helper")
+const {notify} = require("../notification/notification.helper")
 const { type } = require("os")
 const { NotificationType } = require("@prisma/client")
 const { OrderStatus } = require("@prisma/client")
@@ -74,14 +74,34 @@ const createOrderService = async(data, user) => {
         }
     })
 
-    await notify({
-        user_id: user.user_id,
-        order_id: order.order_id,
-        type: NotificationType.order_created,
-        data: {
+    // assign → notify shipper
+    if (order.assigned_to) {
+        await notify({
+            user_id: order.assigned_to,
+            order_id: order.order_id,
+            type: NotificationType.order_assigned,
+            data: {
             order_code: order.order_code
-        }
+            }
+        })
+    }
+
+    // notify admin
+    const admins = await prisma.user.findMany({
+        where: { role: Role.admin, is_deleted: false },
+        select: { user_id: true }
     })
+
+    for (const admin of admins) {
+        await notify({
+            user_id: admin.user_id,
+            order_id: order.order_id,
+            type: NotificationType.order_created,
+            data: {
+            order_code: order.order_code
+            }
+        })
+    }
 
     return order
 }
@@ -332,12 +352,63 @@ const updateAssignOrderService = async(order_id, data, user) => {
         }
     }
 
+    const oldAssignee = existingOrder.assigned_to
+
     const updatedOrder  = await prisma.order.update({
         where: { order_id },
         data: {
             assigned_to: data.assigned_to
         }
     })
+
+
+    // assign lần đầu
+    if (!oldAssignee && data.assigned_to) {
+        await notify({
+            user_id: data.assigned_to,
+            order_id,
+            type: NotificationType.order_assigned,
+            data: {
+                order_code: existingOrder.order_code
+            }
+        })
+    }
+
+    // reassign
+    else if (oldAssignee && data.assigned_to && oldAssignee !== data.assigned_to) {
+
+        // người mới
+        await notify({
+            user_id: data.assigned_to,
+            order_id,
+            type: NotificationType.order_reassigned,
+            data: {
+                order_code: existingOrder.order_code
+            }
+        })
+
+        // người cũ
+        await notify({
+            user_id: oldAssignee,
+            order_id,
+            type: NotificationType.order_unassigned,
+            data: {
+                order_code: existingOrder.order_code
+            }
+        })
+    }
+
+    // unassign (when order is unassigned)
+    else if (oldAssignee && data.assigned_to === null) {
+        await notify({
+        user_id: oldAssignee,
+        order_id,
+        type: NotificationType.order_unassigned,
+        data: {
+            order_code: existingOrder.order_code
+        }
+        })
+    }
 
     return updatedOrder
 }
@@ -440,6 +511,31 @@ const updateOrderStatusService = async(order_id, data, user) => {
 
         return updatedOrder
     })
+
+    const receivers = []
+
+    // shipper
+    if (existingOrder.assigned_to) {
+        receivers.push(existingOrder.assigned_to)
+    }
+
+    // creator
+    receivers.push(existingOrder.created_by)
+
+    // gửi cho tất cả
+    await Promise.all(
+        receivers.map(user_id =>
+            notify({
+                user_id,
+                order_id,
+                type: NotificationType.order_status_updated,
+                data: {
+                    order_code: existingOrder.order_code,
+                    status: newStatus
+                }
+            })
+        )
+    )
 
     return result
 }
