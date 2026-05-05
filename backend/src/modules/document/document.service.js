@@ -2,6 +2,8 @@ const prisma = require("../../config/prisma")
 const AppError = require("../../utils/AppError")
 const uploadToCloudinary = require("../../utils/upload")
 const cloudinary = require("../../config/cloudinary")
+const { notify } = require("../notification/notification.helper")
+const { NotificationType } = require("@prisma/client")
 
 
 const createDocumentService = async (order_id, file, user) => {
@@ -36,6 +38,18 @@ const createDocumentService = async (order_id, file, user) => {
       is_uploaded: true
     }
   })
+
+    if (order.assigned_to) {
+        await notify({
+            user_id: order.assigned_to,
+            order_id,
+            type: NotificationType.document_uploaded,
+            data: {
+            order_code: order.order_code,
+            doc_name: file.originalname
+            }
+        })
+    }
 
   return doc
 }
@@ -120,11 +134,29 @@ const updateDocumentService = async(doc_id, data) => {
 
     const updated = await prisma.document.update({
         where: {
-            doc_id,
-            is_deleted: false
+            doc_id
         },
         data: updateData
     })
+
+    if (data.deadline !== undefined) {
+
+        const order = await prisma.order.findUnique({
+            where: { order_id: doc.order_id }
+        })
+
+        if (order?.assigned_to) {
+            await notify({
+                user_id: order.assigned_to,
+                order_id: order.order_id,
+                type: NotificationType.document_deadline_updated,
+                data: {
+                    order_code: order.order_code,
+                    deadline: updated.deadline
+                }
+            })
+        }
+    }
 
     return updated
 }
